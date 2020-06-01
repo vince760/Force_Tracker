@@ -1,0 +1,199 @@
+import React from 'react'
+import jobService from "../../services/jobService";
+import Swal from 'sweetalert2';
+import { PropTypes } from "prop-types";
+
+
+class AcceptJob extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            accepted: false,
+            rejected: false,
+        }
+    }
+
+
+    componentDidMount() {
+        const jobId = localStorage.getItem("jobPage")
+      
+        jobService.getById(jobId.split("/")[2])
+            .then(this.getByIdSuccess)
+            .catch(this.getByIdError)
+    }
+
+    getByIdSuccess = (response) => {
+       
+        this.setState(() => {
+            return {
+                organizationName: response.item.organization.name,
+                beginDate: this.convertDate(response.item.startDate),
+                completeDate: this.convertDate(response.item.estimateCompleteDate),
+                requirement: response.item.requirements,
+                type: response.item.type.name,
+                lineOne: response.item.location.lineOne,
+                lineTwo: response.item.location.lineTwo,
+                city: response.item.location.city,
+                state: response.item.location.state,
+                zip: response.item.location.zip,
+                description: response.item.description,
+                jobId: response.item.id
+            }
+        })
+    }
+    getByIdError = () => {
+        Swal.fire({icon: "error", title: 'This Job No Longer Available'})
+    }
+
+    convertDate = (utcDate) => {
+        if (utcDate) {
+            let formatedDate = new Date(utcDate);
+
+            return formatedDate.toLocaleString("en-US").replace(/:\d{2}\s/, " ");
+        }
+        return null;
+    };
+
+    onJobAcceptClick = () => {
+
+        jobService.jobStatus(this.state.jobId, true)
+            .then(this.onjobAcceptSuccess)
+            .catch(this.onJobAcceptError)
+    }
+
+    onJobDenyClick = () => {
+        jobService.jobStatus(this.state.jobId, false)
+            .then(this.onJobDenySuccess)
+            .catch(this.onJobAcceptError)
+    }
+
+    onJobDenySuccess = () => {
+        Swal.fire({ icon: "success", title: "Job Has Been Denied" })
+    }
+
+    onjobAcceptSuccess = () => {
+        Swal.fire({ icon: "success", title: "Job Has Been Accepted" })
+    }
+
+    onJobAcceptError = () => {
+        Swal.fire({ icon: "error", title: "Please Choose One" })
+    }
+
+
+    render() {
+        return (
+            <div className="col-lg-12 ">
+                <div className="mb-3 profile-responsive card">
+                    <div className="menu-header text-center" style={{color: "white"}}>
+                        <div className="dropdown-menu-header-inner bg-dark">
+                            <div
+                                className="menu-header-image opacity-1"
+                                style={{
+                                    backgroundImage:
+                                        'url("assets/images/dropdown-header/abstract3.jpg")'
+                                }}
+                            />
+                            <div className="menu-header-content btn-pane-right">
+                                <div className="avatar-icon-wrapper mr-3 avatar-icon-xl btn-hover-shine">
+                                    {/* <div className="avatar-icon rounded">
+                                        <img src={this.state.organizationName.image ? this.state.organizationName.image : "https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcQc1Wd3qBRHXaLBGOfHVlSNdo2tawEyHdYFb7vTpS9_VSY9BaLG&usqp=CAU"} alt="Avatar 5" />
+                                    </div> */}
+                                </div>
+                                <div className="widget-content pt-4 pb-4 pr-1 pl-1">
+                                    <h5 className="menu-header-title text-center">{this.state.organizationName}</h5>
+
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-10 row " >
+                        <div style={{ marginLeft: 50 }} className="list-group list-group-flush col">
+
+                            <div className="widget-content pt-1 pl-0 pr-0">
+                                <div className="text-left">
+                                    <h5 className="widget-heading opacity-4 mb-0">Job Begins On:</h5> {this.state.beginDate}
+
+
+                                </div>
+                                <br />
+                                <div className="text-left">
+                                    <h5 className="widget-heading opacity-4 mb-0">Estimated Completion Date:</h5>
+
+                                    {this.state.completeDate}
+                                </div>
+                                <br />
+                                <div>
+                                    <h5 className="widget-heading opacity-4 mb-0">Job Requirements:</h5>
+
+                                    {this.state.requirement}
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ marginLeft: 50 }} className="list-group list-group-flush col">
+                            <div className="widget-content pt-1 pl-0 pr-0">
+                                <div className="text-left">
+                                    <h5 className="widget-heading opacity-4 mb-0">Job Type:</h5>
+
+                                    {this.state.type}
+                                </div>
+                                <br />
+                                <div className="text-left">
+                                    <h5 className="widget-heading opacity-4 mb-0">Location:</h5>
+                                    {this.state.lineOne}
+                                    {this.state.lineTwo ? this.state.lineTwo : null}
+                                    <br />
+                                    {this.state.city}
+                                    <br />
+                                    {this.state.state}
+                                    <br />
+                                    {this.state.zip}
+
+                                </div>
+                                <br />
+
+                            </div>
+                        </div>
+
+
+                    </div>
+                    <div style={{ marginLeft: 240 }}>
+                        <h5 className="widget-heading opacity-4 mb-0">Job Description: </h5>
+                        {this.state.description}
+                    </div>
+                    <li className="p-0 list-group-item">
+                        <div className="grid-menu grid-menu-2col">
+                            <div className="no-gutters row">
+                                <div className="col-sm-6">
+
+                                    <button onClick={this.onJobAcceptClick} className="btn-icon-vertical btn-square btn-transition br-bl btn btn-outline-link">
+                                        <i className="lnr-thumbs-up btn-icon-wrapper btn-icon-lg mb-3">
+
+                                        </i>
+                                            Accept Job
+                                    </button>
+                                </div>
+                                <div className="col-sm-6">
+                                    <button onClick={this.onJobDenyClick} className="btn-icon-vertical btn-square btn-transition br-br btn btn-outline-link">
+                                        <i className="lnr-thumbs-down btn-icon-wrapper btn-icon-lg mb-3">
+
+                                        </i>
+                                            Decline Job
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+
+                </div>
+            </div>
+        )
+    }
+}
+
+AcceptJob.propTypes = {
+    currentUser: PropTypes.shape({
+        id: PropTypes.number
+    })
+};
+export default AcceptJob
