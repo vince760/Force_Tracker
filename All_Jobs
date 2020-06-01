@@ -1,0 +1,148 @@
+import React from "react";
+import jobServices from "../../services/jobService";
+import JobCard from "./jobCard";
+import Pagination from "rc-pagination";
+import 'rc-pagination/assets/index.css'
+import { PropTypes } from "prop-types";
+import Loader from "./loader";
+import JobDetails from './JobDetails'
+import AssignedTo from './AssignedTo'
+
+
+
+class Jobs extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      job: [],
+      jobs: [],
+      pageSize: 9,
+      current: 0,
+      total: 0,
+      isLoading: false,
+      message: "",
+      isExpanded: false,
+      isShow: "collapse",
+      activeTab: "organization",
+      isVisible: false,
+    };
+  }
+
+  componentDidMount() {
+    this.getAllJobs(0);
+  }
+
+  getAllJobs = (pageIndex) => {
+    jobServices
+      .getJobs(pageIndex, this.state.pageSize)
+      .then(this.onGetJobsSuccess)
+      .catch(this.onGetJobsError);
+  };
+
+  onGetJobsSuccess = (response) => {
+   
+    this.setState((prevState) => {
+      return {
+        ...prevState,
+        total: response.item.totalCount,
+        jobs: response.item.pagedItems,
+        job: response.item.pagedItems.map(this.mapJob),
+        isLoading: false,
+        
+      };
+    });
+  };
+
+  onGetJobsError = (response) => {
+    return response;
+  };
+  mapJob = (job) => (
+    <JobCard
+      key={job.id}
+      job={job}
+      onClick={this.onClick}
+      editJob={this.editJob}
+      activeTab={this.state.activeTab}
+      toggleTab={this.toggle}
+      onDetailClick={this.onDetailClick}
+      
+
+    />
+    
+  );
+
+  toggle(tab) {
+    if (this.state.activeTab !== tab) {
+      this.setState({
+        activeTab: tab,
+      });
+    }
+  }
+  editJob = (job) => {
+    this.props.history.push(`/jobs/${job.id}/edit`, job);
+  };
+
+
+
+  onDetailClick = (job) => {
+    this.setState((prevState) => {
+      return {
+        ...prevState,
+        isVisible: !this.state.isVisible,
+        jobDetails: job,
+        assigned: job.assignedTo.map(this.mapAssigned)
+      }
+    })
+  }
+
+  closeModal = () => {
+    this.setState((prevState) => {
+      return {
+        ...prevState,
+        isVisible: !this.state.isVisible
+      }
+    })
+  }
+
+
+
+  goToPage = (updatePage) => {
+    this.setState({ current: updatePage - 1 });
+    this.getAllJobs(updatePage);
+
+  };
+
+  mapAssigned=(job)=>(
+    <AssignedTo job={job} key={job.id} />
+  )
+
+
+  render() {
+    return (
+      <div className="position-relative form-group col-md-12 row">
+        {this.state.isVisible ? <JobDetails assigned={this.state.assigned} closeModal={this.closeModal} job={this.state.jobDetails} /> : null}
+        {this.state.isLoading ? (
+          <Loader {...this.state.isLoading} />
+        ) : (
+            <div></div>
+          )}
+        <div className="row ">{this.state.job}</div>
+        <Pagination
+          className="text-center mb-3"
+          style={{marginLeft: 420}}
+          current={this.state.current + 1}
+          total={this.state.total}
+          pageSize={this.state.pageSize}
+          onChange={this.goToPage}
+        />
+      </div>
+    );
+  }
+}
+Jobs.propTypes = {
+  history: PropTypes.shape({
+    push: PropTypes.func,
+  }),
+};
+
+export default Jobs;
