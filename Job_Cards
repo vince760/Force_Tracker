@@ -1,0 +1,149 @@
+import React from "react";
+import { PropTypes } from "prop-types";
+import "../../assets/base.scss";
+import Tooltip from '@material-ui/core/Tooltip';
+
+
+const JobCard = (props) => {
+
+
+  const convertDate = (utcDate) => {
+    if (utcDate) {
+      let formatedDate = new Date(utcDate);
+
+      return formatedDate.toLocaleString("en-US").replace(/:\d{2}\s/, " ");
+    }
+    return null;
+  };
+
+  const onClickDetails = () => {
+    props.onDetailClick(props.job)
+  }
+
+
+
+
+
+  return (
+
+
+    <div className="col-sm-12 col-lg-6 col-xl-4">
+      <div className="mb-3 profile-responsive card">
+        <div className="dropdown-menu-header">
+          <div className="dropdown-menu-header-inner bg-dark">
+            
+            <div
+              className="menu-header-image opacity-1"
+              style={{
+                backgroundImage:
+                  'url("assets/images/dropdown-header/abstract3.jpg")'
+              }}
+            />
+            <div className="menu-header-content btn-pane-right">
+              <div className="avatar-icon-wrapper mr-3 avatar-icon-xl btn-hover-shine">
+                <div className="avatar-icon rounded">
+                  <img src={props.job.organization.logo} alt="Avatar 5" />
+                </div>
+              </div>
+              <div>
+                <h5 className="menu-header-title">{props.job.title}</h5>
+                
+              </div>
+              <div className="menu-header-btn-pane">
+                <button onClick={onClickDetails} className="btn btn-success">Details</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <ul className="list-group list-group-flush">
+          <li className="list-group-item">
+            <div className="widget-content pt-1 pl-0 pr-0">
+              <div className="text-center">
+                {props.job.status.id === 1 ? <div className="badge badge-pill badge-warning">{props.job.status.name}</div> : <div className="badge badge-pill badge-success">{props.job.status.name}</div>}
+                <h5 className="widget-heading opacity-4 mb-0">Job Begins On:</h5>
+                <h6 className="mt-3 mb-3">
+                  <span className="pr-2">
+                    <b className="text-danger">{convertDate(props.job.startDate)}</b>
+                  </span>
+                </h6>
+                <p style={{ minHeight: 100 }}>{props.job.organization.description}</p>
+                <button onClick={() => props.editJob(props.job)} className="btn-wide btn-pill btn btn-outline-primary">
+                  Edit Job
+            </button>
+
+              </div>
+            </div>
+          </li>
+          <ul >
+            <div style={{ marginLeft: -45 }} className="text-center">
+              <strong  >Main Contact</strong>
+            </div>
+            <div style={{paddingLeft: 105}} className="text-left">
+              <div className="btn-icon-vertical btn-square  br-bl btn btn-outline-link" >
+
+
+                <div className="avatar-icon">
+                  <Tooltip title={props.job.primaryContact.name ? props.job.primaryContact.name : "Main Contact Name"} placement="top">
+                    <img src={props.job.primaryContact.imageUrl !== null && props.job.primaryContact.imageUrl.length > 30 ? props.job.primaryContact.imageUrl : "https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcQc1Wd3qBRHXaLBGOfHVlSNdo2tawEyHdYFb7vTpS9_VSY9BaLG&usqp=CAU"} alt="user image" />
+                  </Tooltip>
+                </div>
+
+              </div>
+              <br/>
+              Phone: {props.job.primaryContact.phone}
+            </div>
+
+          </ul>
+          
+        </ul>
+      </div>
+    </div>
+
+
+
+
+  );
+};
+
+JobCard.propTypes = {
+  isExpanded: PropTypes.bool,
+  onClick: PropTypes.func,
+  isOpen: PropTypes.bool,
+  isActive: PropTypes.bool,
+  setActiveTab: PropTypes.func,
+  toggle: PropTypes.func,
+  toggleTab: PropTypes.func,
+  editJob: PropTypes.func,
+  activeTab: PropTypes.string,
+  job: PropTypes.shape({
+    title: PropTypes.string.isRequired,
+    description: PropTypes.string.isRequired,
+    id: PropTypes.number.isRequired,
+    requirements: PropTypes.string.isRequired,
+    startDate: PropTypes.string.isRequired,
+    estimateEndDate: PropTypes.instanceOf(Date),
+    assignedTo: PropTypes.array,
+    status: PropTypes.shape({
+      id: PropTypes.number,
+      name: PropTypes.string
+    }),
+    organization: PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      description: PropTypes.string,
+      bussinessPhone: PropTypes.string,
+      logo: PropTypes.string,
+      siteUrl: PropTypes.string,
+    }),
+    location: PropTypes.shape({
+      locationType: PropTypes.string.isRequired,
+    }),
+    primaryContact: PropTypes.shape({
+      name: PropTypes.string,
+      phone: PropTypes.string,
+      imageUrl: PropTypes.string
+    }),
+  }).isRequired,
+  onDetailClick: PropTypes.func,
+  mapAssignedImage: PropTypes.func
+};
+export default JobCard;
