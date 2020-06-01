@@ -1,0 +1,178 @@
+import React from 'react'
+import PropTypes from "prop-types";
+
+
+const JobDetails = (props) => {
+    const closeModal = (e) => {
+        props.closeModal(e)
+    }
+
+    
+
+    const convertDate = (utcDate) => {
+        if (utcDate) {
+            let formatedDate = new Date(utcDate);
+
+            return formatedDate.toLocaleString("en-US").replace(/:\d{2}\s/, " ");
+        }
+        return null;
+    };
+
+    
+    return (
+        <div
+            className="modal fade show"
+            id="exampleModal"
+            tabIndex={-1}
+            role="dialog"
+            aria-labelledby="exampleModalLabel"
+            aria-modal="true"
+            style={{ display: "block", paddingRight: 17, paddingTop: 50 }}
+        >
+            <div className="modal-dialog" role="document">
+                <div className="modal-content">
+                    <div className="modal-header">
+                        <h5 className="modal-title" id="exampleModalLabel">
+
+                        </h5>
+                        <button
+                            type="button"
+                            className="close"
+                            data-dismiss="modal"
+                            aria-label="Close"
+                            onClick={closeModal}
+                        >
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                    <div className="modal-body">
+                        <div className="modal-body">
+                            <center>
+
+                                <h3>{props.job.title}</h3>
+                                <h2>Requirements:</h2>{props.job.requirements}
+
+
+                                <h3 className="media-heading">
+                                    {/* {props.contact.name} */}
+                                </h3>
+
+                            </center>
+                            <hr />
+
+                            <div className="row ">
+                                <div className="col-md-6 text-left">
+                                    <strong>Begins On: </strong>
+                                    <br />
+                                    {convertDate(props.job.startDate)}
+                                    <br />
+                                    <strong>Est. Completion Date: </strong>
+                                    <br />
+                                    {props.job.estimateCompleteDate ? convertDate(props.job.estimateCompleteDate) : "No Completion Date"}
+                                </div>
+                                <div className="col-md-6">
+                                    <strong>Main Contact: </strong>
+                                    <br />
+                                    {props.job.primaryContact.name}
+                                    <br />
+                                    {props.job.primaryContact.email}
+                                    <br />
+                                    {props.job.primaryContact.phone}
+                                </div>
+                            </div>
+
+                            <hr />
+                            <center>
+                                <div className="row">
+                                    <div className="col-md-6 text-left">
+                                        <strong>Location: </strong>
+                                        <br />
+                                    Address: {props.job.location.lineOne}
+                                        <br />
+                                        {props.job.location.lineTwo ? `Suite ${props.job.location.lineTwo}` : null}
+                                        <br />
+                                    City: {props.job.location.city}
+                                        <br />
+                                    State: {props.job.location.state}
+                                        <br />
+                                    Zip: {props.job.location.zip}
+                                    </div>
+                                    <div className="col-md-6 text-left">
+                                        <strong> Job Type</strong>
+                                        <br />
+                                        {props.job.type.name}
+                                        <br />
+                                        <strong> Assigned To</strong>
+                                        <br />
+                                       
+                                            <div>
+                                                
+                                            {props.assigned}
+                                                   
+                                            </div>
+                                        
+                                    </div>
+                                </div>
+                                <br />
+                            </center>
+
+                            <div>
+                                <strong> Notes:</strong> {props.job.description}
+                            </div>
+                        </div>
+
+
+                    </div>
+                    <div className="modal-footer">
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            data-dismiss="modal"
+                            onClick={closeModal}
+                        >
+                            Close
+        </button>
+
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    )
+}
+
+JobDetails.propTypes = {
+    assigned: PropTypes.func,
+    closeModal: PropTypes.func,
+    job: PropTypes.shape({
+        assignedTo: PropTypes.arrayOf(
+            PropTypes.shape({
+                imageUrl: PropTypes.string,
+                name: PropTypes.string
+            })
+        ),
+        title: PropTypes.string,
+        startDate: PropTypes.string,
+        estimateCompleteDate: PropTypes.string,
+        primaryContact: PropTypes.shape({
+            name: PropTypes.string,
+            email: PropTypes.string,
+            phone: PropTypes.string,
+        }),
+        location: PropTypes.shape({
+            city: PropTypes.string,
+            lineOne: PropTypes.string,
+            lineTwo: PropTypes.string,
+            state: PropTypes.string,
+            zip: PropTypes.string
+        }),
+        description: PropTypes.string,
+        requirements: PropTypes.string,
+        type: PropTypes.shape({
+            name: PropTypes.string
+        })
+    })
+}
+
+export default JobDetails
