@@ -1,0 +1,779 @@
+import React from "react";
+import jobService from "../../services/jobService";
+
+import { Formik, FastField, Field, Form, FieldArray } from "formik";
+import { PropTypes } from "prop-types";
+import DatePicker from "react-datepicker";
+import { Card, CardHeader, CardBody, Row, Col, Button } from "reactstrap";
+import { addJobSchema } from "./addJobSchema";
+import Swal from "sweetalert2";
+import Tooltip from '@material-ui/core/Tooltip';
+import { Container, Draggable } from 'react-smooth-dnd'
+import * as contactServices from "../../services/contactServices";
+import OrganizationWorkers from '../organizations/OrganizationWorkers'
+
+
+const dropzoneStyle = {
+  width: "100%",
+  minHeight: 50,
+  borderWidth: 2,
+  borderColor: "rgb(102, 102, 102)",
+  borderStyle: "dashed",
+  borderRadius: 5,
+
+
+}
+
+
+class JobForm extends React.Component {
+  state = {
+    formData: {
+      id: 0,
+      title: "",
+      description: "",
+      requirements: "",
+      startDate: null,
+      estimateCompleteDate: null,
+      typeId: 0,
+      jobTypeId: 0,
+      statusId: 1,
+      status: "",
+      organizationId: this.props.currentUser.id,
+      contactId: 0,
+      assignedTo: [],
+      assignedToEmail: [],
+      worker: {
+        name: "",
+        email: "",
+        phone: "",
+        notes: "",
+      },
+      location: {
+        locationTypeId: 0,
+        locationType: "",
+        lineOne: "",
+        lineTwo: "",
+        city: "",
+        zip: "",
+        stateId: 0,
+        state: "",
+        latitude: 0,
+        longitude: 0,
+      },
+    },
+    isVisible: false,
+    mappedStates: null,
+    locationTypes: null,
+    organizationList: null,
+    assignedTo: [],
+    mainContact: [],
+
+  };
+
+
+  componentDidMount() {
+
+    if (this.props.location && this.props.location.state) {
+
+      const job = this.props.location.state;
+      const formData = {
+        id: job.id,
+        title: job.title,
+        description: job.description,
+        requirements: job.requirements,
+        startDate: new Date(job.startDate),
+        estimateCompleteDate: new Date(job.estimateCompleteDate),
+        typeId: job.type.id,
+        jobTypeId: job.type.id,
+
+        status: job.status.name,
+        organizationId: parseInt(job.organization.id),
+        contactId: job.primaryContact.id,
+        assignedTo: job.assignedTo ? job.assignedTo : [],
+        contact: {
+
+          name: job.primaryContact.name,
+          email: job.primaryContact.email,
+          phone: job.primaryContact.phone,
+          notes: job.primaryContact.notes ? job.primaryContact.notes : "",
+          imageUrl: job.primaryContact.avatarUrl,
+        },
+        location: {
+          locationTypeId: parseInt(job.location.locationTypeId),
+          lineOne: job.location.lineOne,
+          lineTwo: job.location.lineTwo || "",
+          city: job.location.city,
+          zip: job.location.zip,
+          stateId: job.location.stateId.toString(),
+          latitude: job.location.latitude,
+          longitude: job.location.longitude,
+        },
+
+      };
+
+      this.setState((prevState) => {
+        return {
+          ...prevState,
+          formData,
+          assignedTo: job.assignedTo ? job.assignedTo : [],
+          mainContact: [job.primaryContact],
+        };
+      });
+    }
+    this.getSelectTypes();
+
+    return null;
+  }
+
+  getSelectTypes = () => {
+    jobService
+      .getTypes()
+      .then(this.onGetTypesSuccess)
+      .catch(this.onGetTypesFail);
+  };
+  onGetTypesFail = () => {
+    Swal.fire({ icon: "error", title: "No Types Found" })
+  };
+  onGetTypesSuccess = (response) => {
+
+    const { states, locationTypes, organizations, jobTypes, status } = response.item;
+
+    this.setState((prevState) => {
+      return {
+        ...prevState,
+        states,
+        mappedStates: states.map(this.mapSelectOptions),
+        locationTypes: locationTypes.map(this.mapSelectOptions),
+        organizationList: organizations.map(this.mapSelectOptions),
+        jobTypes: jobTypes.map(this.mapSelectOptions),
+        statusId: status.map(this.mapSelectOptions)
+      };
+    });
+  };
+  mapSelectOptions = (type) => {
+    return (
+      <option key={type.id} value={type.id}>
+        {type.name}
+      </option>
+    );
+  };
+
+
+
+  onSave = (formValues) => {
+
+    formValues.organizationId = parseInt(this.props.currentUser.id);
+    formValues.assignedTo = formValues.assignedTo
+    formValues.location.stateId = parseInt(formValues.location.stateId);
+    formValues.location.longitude = this.state.formData.location.longitude;
+    formValues.location.latitude = this.state.formData.location.latitude;
+    formValues.contactId = formValues.contactId;
+    formValues.location.locationTypeId = parseInt(
+      formValues.location.locationTypeId
+    );
+    formValues.typeId = formValues.typeId;
+
+ 
+    if (this.state.formData.id > 0) {
+
+      formValues.location.locationTypeId = parseInt(formValues.location.locationTypeId);
+      formValues.contactId = formValues.contactId;
+      formValues.typeId = parseInt(formValues.typeId);
+      jobService
+        .update(formValues)
+        .then(this.onSaveSuccess)
+        .catch(this.onSaveErrorGeneric);
+    } else {
+
+      jobService
+        .add(formValues)
+        .then(this.onSaveSuccess)
+        .catch(this.onSaveErrorGeneric);
+    }
+
+    this.setState((prevState) => {
+      const formData = {
+        ...prevState.formData,
+      };
+      return { ...prevState, formData: formData };
+    });
+
+  };
+
+  onSaveSuccess = (response) => {
+    Swal.fire("Data saved successfully");
+
+    this.setState((prevState) => {
+      const formData = { ...prevState.formData, id: response.item };
+      return { ...prevState, formData };
+    });
+  };
+
+  onSaveErrorGeneric = () => {
+    Swal.fire("Failed to save changes: ");
+    return false;
+  };
+
+  showContacts = () => {
+    this.setState(() => {
+      return {
+        isVisible: !this.state.isVisible
+      }
+    })
+  }
+
+  contactHandleChange = (e, setFieldValue) => {
+
+    if (e.addedIndex !== null && this.state.mainContact.length === 0) {
+      this.setState({ mainContact: contactServices.applyDrag(this.state.mainContact, e) })
+      setFieldValue("contact.name", e.payload.name)
+      setFieldValue("contact.email", e.payload.email)
+      setFieldValue("contact.phone", e.payload.phone)
+      setFieldValue("contact.notes", e.payload.notes)
+      setFieldValue("contactId", e.payload.id)
+
+    }
+  }
+
+
+
+  assignedHandleChange = (e, push) => {
+    if (e.addedIndex !== null) {
+      this.setState({ assignedTo: contactServices.applyDrag(this.state.assignedTo, e), addedContacts: true })
+      push(e.payload)
+
+
+    }
+  }
+
+
+  changeLocationTypeId = (formValues, setFieldValue) => {
+    if (formValues !== 0) {
+      setFieldValue("location.locationTypeId", parseInt(formValues))
+
+    }
+  }
+
+
+
+  changeJobType = (formValues, setFieldValue) => {
+    if (formValues !== 0) {
+      setFieldValue("jobTypeId", parseInt(formValues))
+
+    }
+  }
+
+  onCancelClick = () => {
+    this.props.history.push('/jobs');
+  }
+
+
+
+
+
+  render() {
+
+    return (
+      <div className="col-md-12 row">
+        <div className="col-md-5" >
+          {this.state.isVisible ? <OrganizationWorkers /> : null}
+        </div>
+        <div style={!this.state.isVisible ? { marginLeft: 250 } : null} className="position-relative form-group col-md-7" >
+
+          <Card className="main-card mb-3">
+            <CardHeader>
+              {this.state.formData.id > 0
+                ? `Edit Job ${this.state.formData.id}`
+                : "Create New Job"}
+            </CardHeader>
+            <CardBody>
+              <Formik
+                enableReinitialize={true}
+                initialValues={this.state.formData}
+                onSubmit={this.onSave}
+                validationSchema={addJobSchema}
+                showContacts={this.showContacts}
+                imageDrop={this.imageDrop}
+                render={(formikProps) => (
+                  <Form>
+                    <div>
+                      <label htmlFor="title">Title:</label>
+                      <FastField
+                        name="title"
+                        placeholder="Enter title"
+                        component="input"
+                        className="form-control"
+                      />
+                      {formikProps.touched.title && formikProps.errors.title && (
+                        <div className="text-danger">
+                          {formikProps.errors.title}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="description">Description</label>
+                      <FastField
+                        name="description"
+                        className="form-control autosize-input"
+                        component="textarea"
+
+                      />
+                      {formikProps.touched.description &&
+                        formikProps.errors.description && (
+                          <div className="text-danger">
+                            {formikProps.errors.description}
+                          </div>
+                        )}
+                    </div>
+                    <div>
+                      <label htmlFor="requirements">Requirements</label>
+                      <FastField
+                        component="input"
+                        name="requirements"
+                        id="requirements"
+                        className="form-control"
+                      />
+                      {formikProps.touched.requirements &&
+                        formikProps.errors.requirements && (
+                          <div className="text-danger">
+                            {formikProps.errors.requirements}
+                          </div>
+                        )}
+                    </div>
+                    <Row>
+                      <Col md={3}>
+                        <div>
+                          <label htmlFor="startDate">Start Date</label>
+                          <DatePicker
+                            {...formikProps}
+                            dateFormat="MM-dd-yyyy"
+                            name="startDate"
+                            className="form-control"
+                            id="startDate"
+                            selected={formikProps.values.startDate}
+                            onChange={(date) => {
+                              formikProps.setFieldValue("startDate", date);
+                            }}
+                          />
+                        </div>
+                      </Col>
+                      <Col md={3}>
+                        <div>
+                          <label htmlFor="startDate">Start Time</label>
+                          <DatePicker
+                            {...formikProps}
+                            timeFormat="HH:mm"
+                            dateFormat="HH:mm"
+                            showTimeSelect
+                            showTimeSelectOnly
+                            timeIntervals={15}
+                            timeCaption="Time"
+                            name="startDate"
+                            className="form-control"
+                            id="startTime"
+                            selected={formikProps.values.startDate}
+                            onChange={(date) => {
+                              formikProps.setFieldValue("startDate", date);
+                            }}
+                          />
+                        </div>
+                      </Col>
+                      <Col md={3}>
+                        <div>
+                          <label htmlFor="estimateCompleteDate">
+                            Est. Complete Date
+                        </label>
+                          <DatePicker
+                            {...formikProps}
+                            dateFormat="MM-dd-yyyy"
+                            name="estimateCompleteDate"
+                            className="form-control"
+                            id="estimateCompleteDate"
+                            selected={
+                              formikProps.values.estimateCompleteDate || null
+                            }
+                            onChange={(date) => {
+                              formikProps.setFieldValue(
+                                "estimateCompleteDate",
+                                date
+                              );
+                            }}
+                          />
+                        </div>
+                      </Col>
+                      <Col md={3}>
+                        <div>
+                          <label htmlFor="estimateCompleteDate">
+                            Complete Time
+                        </label>
+                          <DatePicker
+                            {...formikProps}
+                            timeFormat="HH:mm"
+                            dateFormat="HH:mm"
+                            showTimeSelect
+                            showTimeSelectOnly
+                            timeIntervals={15}
+                            timeCaption="Time"
+                            name="estimateCompleteDate"
+                            className="form-control"
+                            id="CompleteTime"
+                            selected={
+                              formikProps.values.estimateCompleteDate || null
+                            }
+                            onChange={(date) => {
+                              formikProps.setFieldValue(
+                                "estimateCompleteDate",
+                                date
+                              );
+                            }}
+                          />
+                        </div>
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col style={{ "paddingTop": 10 }} md={4}>
+                        <div>
+                          <label htmlFor="jobTypeId">Type:</label>
+                          <Field
+                            name="jobTypeId"
+                            id="jobTypeId"
+                            className="form-control"
+                            component="select"
+                            autoComplete="on"
+                            onClick={() => { this.changeJobType(formikProps.values.jobTypeId, formikProps.setFieldValue) }}
+                          >
+                            <option value={0}></option>
+                            {this.state.jobTypes}
+                          </Field>{" "}
+                          {formikProps.touched.type &&
+                            formikProps.errors.type && (
+                              <div className="text-danger">
+                                {formikProps.errors.type}
+                              </div>
+                            )}
+                        </div>
+
+                      </Col>
+                      <Col className="assigned" md={8}>
+
+                        <div className="avatar-wrapper mt-2 avatar-wrapper-overlap">
+                          <label className="add" htmlFor="assignedTo">Assign To:</label>
+
+
+                          <FieldArray name="assignedTo">
+                            {({ push }) => {
+                              return (
+                                <Container style={dropzoneStyle} className="avatar-icon-wrapper avatar-icon-sm" orientation="horizontal" groupName="1"
+                                  getChildPayload={i => this.state.assignedTo[i]} onDrop={(e) => this.assignedHandleChange(e, push)} >
+
+                                  <div placeholder="Place Contacts Here" className="avatar-icon-wrapper avatar-icon-sm avatar-icon-add">
+                                  </div>
+                                  {
+                                    this.state.assignedTo.map((p, i) => {
+                                      return (
+                                        <Draggable key={i}>
+                                          <div className="avatar-icon">
+                                            <Tooltip title={this.state.assignedTo[i].name} placement="top">
+                                              <img data-tip data-for="userImages" alt="" src={this.state.assignedTo[i].imageUrl ? this.state.assignedTo[i].imageUrl : "https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcQc1Wd3qBRHXaLBGOfHVlSNdo2tawEyHdYFb7vTpS9_VSY9BaLG&usqp=CAU"} />
+                                            </Tooltip>
+                                          </div>
+                                        </Draggable>
+                                      );
+                                    })
+                                  }
+                                </Container>
+                              )
+                            }}
+
+                          </FieldArray>
+
+
+                        </div>
+
+                      </Col>
+
+
+                    </Row>
+
+                    <div className="divider"></div>
+                    <Row>
+                      <Col md={3}>
+                        <div>
+                          <Button onClick={this.showContacts} style={{ backgroundColor: "blue" }} className="mb-2 mr-2 btn-pill btn btn-primary">Select Contact
+                        </Button>
+                        </div>
+                      </Col>
+                      <Col className="mainContact" md={5}>
+                        <div>
+                          <Container style={dropzoneStyle} className="avatar-icon-wrapper avatar-icon-sm" orientation="horizontal" groupName="1"
+                            getChildPayload={i => this.state.mainContact[i]}
+                            onDrop={(e) => this.contactHandleChange(e, formikProps.setFieldValue)}
+
+                          >
+
+                            <span htmlFor="contact" placeholdertext="Main Contact" style={{ padding: 40 }}>Main Contact</span>
+
+                            <div placeholder="Place Contacts Here" className="avatar-icon-wrapper avatar-icon-sm avatar-icon-add">
+                            </div>
+                            {
+                              this.state.mainContact.map((p, i) => {
+                                return (
+                                  <Draggable key={i}>
+                                    <div className="avatar-icon">
+                                      <Tooltip title={this.state.mainContact[i].name} placement="top">
+                                        <img data-tip data-for="userImages" alt="" src={this.state.mainContact[i].imageUrl ? this.state.mainContact[i].imageUrl : "https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcQc1Wd3qBRHXaLBGOfHVlSNdo2tawEyHdYFb7vTpS9_VSY9BaLG&usqp=CAU"} />
+                                      </Tooltip>
+                                    </div>
+                                  </Draggable>
+                                );
+                              })
+                            }
+
+                          </Container>
+
+                        </div>
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col md={5}>
+
+
+                        <div >
+                          <label htmlFor="contact.name">Contact Name</label>
+                          <FastField
+                            component="input"
+                            name="contact.name"
+                            id="contact.name"
+                            className="form-control"
+
+                          />
+
+                        </div>
+                      </Col>
+                      <Col md={4}>
+                        <div>
+                          <label htmlFor="contact.email">Email</label>
+                          <FastField
+                            component="input"
+                            name="contact.email"
+                            id="contact.email"
+                            className="form-control input-mask-trigger"
+                            data-inputmask="'alias': 'email'"
+                            im-insert="true"
+                          />
+
+                        </div>
+                      </Col>
+                      <Col md={3}>
+                        <div>
+                          <label htmlFor="contact.phone">Phone</label>
+                          <FastField
+                            component="input"
+                            name="contact.phone"
+                            id="contact.phone"
+                            className="form-control"
+                          />{" "}
+                          {formikProps.touched.contact &&
+                            formikProps.errors.contact && (
+                              <div className="text-danger">
+                                {formikProps.errors.contact}
+                              </div>
+                            )}
+                        </div>
+                      </Col>
+                    </Row>
+                    <div>
+                      <label htmlFor="contact.notes">Notes</label>
+                      <FastField
+                        component="input"
+                        name="contact.notes"
+                        id="contact.notes"
+                        className="form-control"
+                      />
+
+                    </div>
+                    <div className="divider"></div>
+                    <Row>
+                      <Col md={3}>
+                        <div>
+                          <label htmlFor="location.locationTypeId">
+                            Location Type
+                        </label>
+                          <Field
+                            name="location.locationTypeId"
+                            id="location.locationTypeId"
+                            className="form-control"
+                            component="select"
+                            autoComplete="on"
+                            onClick={() => { this.changeLocationTypeId(formikProps.values.location.locationTypeId, formikProps.setFieldValue) }}
+
+
+                          >
+                            <option value={0}></option>
+                            {this.state.locationTypes}
+                          </Field>
+                        </div>
+                      </Col>
+                      <Col md={5}>
+                        <div>
+                          <label htmlFor="location.lineOne">Address</label>
+                          <FastField
+                            component="input"
+                            name="location.lineOne"
+                            id="location.lineOne"
+                            className="form-control mr-sm-2"
+                          />{" "}
+
+                        </div>
+                      </Col>
+                      <Col md={4}>
+                        <div>
+                          <label htmlFor="location.lineTwo">Address Other</label>
+                          <FastField
+                            component="input"
+                            name="location.lineTwo"
+                            id="location.lineTwo"
+                            className="form-control mr-sm-2"
+                          />{" "}
+
+                        </div>
+                      </Col>
+                    </Row>
+                    <Row form>
+                      <Col md={6}>
+                        <div>
+                          <label htmlFor="location.city">City</label>
+                          <FastField
+                            component="input"
+                            name="location.city"
+                            id="location.city"
+                            className="form-control"
+                          />{" "}
+
+                        </div>
+                      </Col>
+                      <Col md={4}>
+                        <div>
+                          <label htmlFor="location.state">State</label>
+                          <Field
+                            name="location.stateId"
+                            id="location.stateId"
+                            className="form-control"
+                            component="select"
+                            autoComplete="on"
+                          >
+                            <option value={0}></option>
+                            {this.state.mappedStates}
+                          </Field>
+                        </div>
+                      </Col>
+                      <Col md={2}>
+                        <div>
+                          <label htmlFor="location.zip">Zip</label>
+                          <FastField
+                            component="input"
+                            name="location.zip"
+                            id="location.zip"
+                            className="form-control"
+                          />{" "}
+
+                        </div>
+                      </Col>
+                    </Row>
+                    <div className="divider"></div>
+                    <div >
+                      <Button type="submit" style={{ backgroundColor: "blue", width: 150 }} className="mb-2 mr-2 btn-pill btn btn-primary">Save
+                        </Button>
+
+                      <button
+                        type="button"
+                        onClick={this.onCancelClick}
+                        className="btn btn-default btn-sm"
+                      >
+                        Cancel
+                    </button>
+                    </div>
+                  </Form>
+                )}
+              />
+            </CardBody>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+}
+JobForm.propTypes = {
+  history: PropTypes.shape({
+    push: PropTypes.func,
+  }),
+  addNotification: PropTypes.func,
+  isExpanded: PropTypes.bool,
+  onClick: PropTypes.func,
+  onDelete: PropTypes.func,
+  onCancel: PropTypes.func,
+  onSave: PropTypes.func,
+  isOpen: PropTypes.bool,
+  toggle: PropTypes.func,
+  onGetTypesFail: PropTypes.func,
+  onGetTypesSuccess: PropTypes.func,
+  currentUser: PropTypes.shape({
+    id: PropTypes.number,
+  }),
+  location: PropTypes.shape({
+    state: PropTypes.shape({
+      type: PropTypes.shape({
+        id: PropTypes.number
+      }),
+      jobTypeId: PropTypes.number,
+      title: PropTypes.string.isRequired,
+      description: PropTypes.string.isRequired,
+      id: PropTypes.number.isRequired,
+      requirements: PropTypes.string.isRequired,
+      startDate: PropTypes.string.isRequired,
+      estimateCompleteDate: PropTypes.string,
+      organization: PropTypes.shape({
+        id: PropTypes.number,
+        name: PropTypes.string.isRequired,
+      }),
+      status: PropTypes.shape({
+        id: PropTypes.number,
+        name: PropTypes.string,
+      }),
+
+      organizationId: PropTypes.number,
+      locationId: PropTypes.number,
+      assignedTo: PropTypes.arrayOf(
+        PropTypes.shape({
+          imageUrl: PropTypes.string,
+          name: PropTypes.string
+        })
+      ),
+      contact: PropTypes.string,
+
+      primaryContact: PropTypes.shape({
+        id: PropTypes.number,
+        name: PropTypes.string,
+        email: PropTypes.string,
+        phone: PropTypes.string,
+        notes: PropTypes.string,
+        avatarUrl: PropTypes.string,
+      }),
+
+      location: PropTypes.shape({
+        id: PropTypes.number,
+        locationTypeId: PropTypes.number,
+        lineOne: PropTypes.string,
+        lineTwo: PropTypes.string,
+        city: PropTypes.string,
+        zip: PropTypes.string,
+        stateId: PropTypes.number,
+        state: PropTypes.string,
+        latitude: PropTypes.number,
+        longitude: PropTypes.number,
+      }),
+    }),
+  }),
+};
+
+export default JobForm 
