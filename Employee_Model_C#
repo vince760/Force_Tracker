@@ -1,0 +1,59 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace Sabio.Models.Domain
+{
+     public class Employee
+    {
+        public int Id { get; set; }
+
+        public int UserProfileId { get; set; }
+
+        public int OrganizationId { get; set; }
+
+        public DateTime DOB { get; set; }
+
+        public int LocationId { get; set; }
+
+        public string Phone { get; set; }
+
+        public int SalaryTypeId { get; set; }
+
+        public string Position { get; set; }
+
+        public int DepartmentId { get; set; }
+
+        public string Supervisor { get; set; }
+
+        public DateTime StartDate { get; set; }
+
+        public DateTime EndDate { get; set; }
+
+        public bool IsActive { get; set; }
+
+        public DateTime DateCreated { get; set; }
+
+        public DateTime DateModified { get; set; }
+
+        public string Email { get; set; }
+
+        public string FirstName { get; set; }
+
+        public string Mi { get; set; }
+
+        public string LastName { get; set; }
+
+        public string AvatarUrl { get; set; }
+
+        public Location Location { get; set; }
+
+        public string SalaryType { get; set; }
+
+        public string Department { get; set; }
+
+        public string Oranization { get; set; }
+
+
+    }
+}
