@@ -1,0 +1,359 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Runtime.Serialization;
+using System.Text;
+using Sabio.Data;
+using Sabio.Data.Providers;
+using Sabio.Models;
+using Sabio.Models.Domain;
+using Sabio.Models.Requests;
+using Sabio.Services;
+
+namespace Sabio.Services 
+{
+    public class EmployeeServices : IEmployeeServices
+    {
+        IDataProvider _data = null;
+
+        public EmployeeServices(IDataProvider data)
+        {
+            _data = data;
+        }
+
+       
+
+        public int AddMultiple(EmployeeMultipleAddRequest model, int userId)
+        {
+            int id = 0;
+            string procName = "dbo.Employees_Insert_V2";
+
+            _data.ExecuteNonQuery(procName, inputParamMapper: delegate (SqlParameterCollection col)
+            {
+                AddParams(model, col);
+                col.AddWithValue("@CreatedBy", userId);
+
+                SqlParameter idOut = new SqlParameter("@Id", SqlDbType.Int);
+                idOut.Direction = ParameterDirection.Output;
+                col.Add(idOut);
+            }, returnParameters: delegate (SqlParameterCollection returnCollection)
+            {
+                object oId = returnCollection["@Id"].Value;
+                Int32.TryParse(oId.ToString(), out id);
+            }
+            );
+            return id;
+        }
+
+        public void Update(EmployeeUpdateRequest model, int userId)
+        {
+            string procName = "dbo.Employees_Update_V2";
+            _data.ExecuteNonQuery(procName, inputParamMapper: delegate (SqlParameterCollection col)
+            {
+                AddParams(model, col);
+                col.AddWithValue("@Id", model.Id);
+                col.AddWithValue("@ModifiedBy", userId);
+                col.AddWithValue("@UserId", userId);
+                col.AddWithValue("@LocationId", model.LocationId);
+                col.AddWithValue("@IsActive", model.IsActive);
+                col.AddWithValue("@UserProfileId", model.UserProfileId);
+                
+            }, returnParameters: null);
+        }
+
+        public void UpdateStatus(int id, bool status, int userId)
+        {
+            string procName = "dbo.Employees_Update_Status";
+            _data.ExecuteNonQuery(procName, inputParamMapper: delegate (SqlParameterCollection col)
+            {
+                col.AddWithValue("@IsActive", status);
+                col.AddWithValue("@Id", id);
+            }, returnParameters: null);
+        }
+
+        public Employee Get(int id)
+        {
+            string procName = "dbo.Employees_SelectById_Details";
+            Employee employee = null;
+            _data.ExecuteCmd(procName, delegate (SqlParameterCollection col)
+            {
+                col.AddWithValue("@Id", id);
+            }, delegate (IDataReader reader, short set)
+            {
+                employee = MapEmployee(reader, out int startingIndex);
+            });
+            return employee;
+        }
+        
+        public void Delete(int id)
+        {
+            string procName = "dbo.Employees_DeleteById";
+            _data.ExecuteNonQuery(procName, delegate (SqlParameterCollection parameterCollection)
+            {
+                parameterCollection.AddWithValue("@Id", id);
+            }, returnParameters: null);
+        }
+
+        public Paged<Employee> GetPaginated(int pageIndex, int pageSize)
+        {
+            Paged<Employee> pagedResult = null;
+
+            List<Employee> result = null;
+            int totalCount = 0;
+            string procName = "dbo.Employees_SelectPaginated_Details";
+
+            _data.ExecuteCmd(procName, inputParamMapper: delegate (SqlParameterCollection parameterCollection)
+            {
+                parameterCollection.AddWithValue("@PageIndex", pageIndex);
+                parameterCollection.AddWithValue("@PageSize", pageSize);
+            }, singleRecordMapper: delegate (IDataReader reader, short set)
+            {
+              
+                Employee employee = MapEmployee(reader, out int index);
+
+                if (totalCount == 0)
+                {
+                    totalCount = reader.GetSafeInt32(index);
+                }
+
+                if (result == null)
+                {
+                    result = new List<Employee>();
+                }
+                result.Add(employee);
+            });
+            if(result != null)
+            {
+                pagedResult = new Paged<Employee>(result, pageIndex, pageSize, totalCount);
+            }
+            return pagedResult;
+        }
+
+        public Paged<Employee> SearchByDepartment(int pageIndex, int pageSize, int departmentId, int orgId)
+        {
+            Paged<Employee> pagedResult = null;
+
+            List<Employee> result = null;
+            int totalCount = 0;
+            string procName = "Employees_Select_ByOrganizationId_ByDepartment";
+
+            _data.ExecuteCmd(procName, inputParamMapper: delegate (SqlParameterCollection parameterCollection)
+            {
+                parameterCollection.AddWithValue("@PageIndex", pageIndex);
+                parameterCollection.AddWithValue("@PageSize", pageSize);
+                parameterCollection.AddWithValue("@DepartmentId", departmentId);
+                parameterCollection.AddWithValue("@Id", orgId);
+            }, singleRecordMapper: delegate (IDataReader reader, short set)
+            {
+               
+                Employee employee = MapEmployee(reader, out int index);
+                if (totalCount == 0)
+                {
+                    totalCount = reader.GetSafeInt32(index);
+                }
+
+                if (result == null)
+                {
+                    result = new List<Employee>();
+                }
+                result.Add(employee);
+            });
+            if (result != null)
+            {
+                pagedResult = new Paged<Employee>(result, pageIndex, pageSize, totalCount);
+            }
+            return pagedResult;
+        }
+
+        public Paged<Employee> SearchByOrganizationId(int pageIndex, int pageSize, int query)
+        {
+            Paged<Employee> pagedResult = null;
+
+            List<Employee> result = null;
+            int totalCount = 0;
+            string procName = "dbo.Employees_Search_ByOrganizationId";
+
+            _data.ExecuteCmd(procName, inputParamMapper: delegate (SqlParameterCollection parameterCollection)
+            {
+                parameterCollection.AddWithValue("@PageIndex", pageIndex);
+                parameterCollection.AddWithValue("@PageSize", pageSize);
+                parameterCollection.AddWithValue("@query", query);
+            }, singleRecordMapper: delegate (IDataReader reader, short set)
+            {
+                Employee employee = MapEmployee(reader, out int index);
+                if (totalCount == 0)
+                {
+                    totalCount = reader.GetSafeInt32(index);
+                }
+
+                if (result == null)
+                {
+                    result = new List<Employee>();
+                }
+                result.Add(employee);
+            });
+            if (result != null)
+            {
+                pagedResult = new Paged<Employee>(result, pageIndex, pageSize, totalCount);
+            }
+            return pagedResult;
+        }
+
+        public EmployeeSelector GetAllTypes()
+        {
+            string procName = "[dbo].[Employees_SelectTypes]";
+
+            EmployeeSelector selectors = null;
+            List<OrganizationSimple> orgs = null;
+            List<SalaryType> salTypes = null;
+            List<DepartmentType> depTypes = null;
+
+            _data.ExecuteCmd(procName, inputParamMapper: null, singleRecordMapper: delegate (IDataReader reader, short set)
+            {
+
+                switch (set)
+                {
+                    case 0:
+
+                        int index = 0;
+                        OrganizationSimple anOrg = new OrganizationSimple();
+
+                        anOrg.Id = reader.GetSafeInt32(index++);
+                        anOrg.Name = reader.GetSafeString(index++);
+
+                        if (orgs == null)
+                        {
+                            orgs = new List<OrganizationSimple>();
+                        }
+                        orgs.Add(anOrg);
+
+                        break;
+
+                    case 1:
+
+                        int inde = 0;
+                        SalaryType aSalType = new SalaryType();
+
+                        aSalType.Id = reader.GetSafeInt32(inde++);
+                        aSalType.Name = reader.GetSafeString(inde++);
+
+                        if (salTypes == null)
+                        {
+                            salTypes = new List<SalaryType>();
+                        }
+                        salTypes.Add(aSalType);
+
+                        break;
+
+                    case 2:
+
+                        int ind = 0;
+                        DepartmentType aDepType = new DepartmentType();
+
+                        aDepType.Id = reader.GetSafeInt32(ind++);
+                        aDepType.Name = reader.GetSafeString(ind++);
+
+                        if (depTypes == null)
+                        {
+                            depTypes = new List<DepartmentType>();
+                        }
+                        depTypes.Add(aDepType);
+
+                        break;
+                }
+            });
+            if (orgs != null && salTypes != null && depTypes != null)
+            {
+                selectors = new EmployeeSelector()
+                {
+                    Organizations = orgs,
+                    SalaryTypes = salTypes,
+                    DepartmentTypes = depTypes
+                };
+            }
+            return selectors;
+        }
+
+        private static void AddParams(EmployeeMultipleAddRequest model, SqlParameterCollection col)
+        {
+
+            col.AddWithValue("@FirstName", model.FirstName);
+            col.AddWithValue("@LastName", model.LastName);
+            col.AddWithValue("@Mi", model.Mi);
+            col.AddWithValue("@AvatarUrl", model.AvatarUrl);
+            col.AddWithValue("@LocationTypeId", model.LocationTypeId);
+            col.AddWithValue("@LineOne", model.LineOne);
+            col.AddWithValue("@LineTwo", model.LineTwo);
+            col.AddWithValue("@City", model.City);
+            col.AddWithValue("@Zip", model.Zip);
+            col.AddWithValue("@StateId", model.StateId);
+            col.AddWithValue("@Latitude", model.Latitude);
+            col.AddWithValue("@Longitude", model.Longitude);
+            col.AddWithValue("@OrganizationId", model.OrganizationId);
+            col.AddWithValue("@DOB", model.DOB);
+            col.AddWithValue("@Phone", model.Phone);
+            col.AddWithValue("@SalaryTypeId", model.SalaryTypeId);
+            col.AddWithValue("@Position", model.Position);
+            col.AddWithValue("@DepartmentId", model.DepartmentId);
+            col.AddWithValue("@Supervisor", model.Supervisor);
+            col.AddWithValue("@StartDate", model.StartDate);
+            col.AddWithValue("@EndDate", model.EndDate);
+            
+           
+
+        }
+
+        private static Employee MapEmployee(IDataReader reader, out int startingIndex)
+        {
+            Employee newEmployee = new Employee();
+            startingIndex = 0;
+            
+            newEmployee.Id = reader.GetSafeInt32(startingIndex++);
+            newEmployee.UserProfileId = reader.GetSafeInt32(startingIndex++);
+            newEmployee.OrganizationId = reader.GetSafeInt32(startingIndex++);
+            newEmployee.DOB = reader.GetSafeDateTime(startingIndex++);
+            newEmployee.LocationId = reader.GetSafeInt32(startingIndex++);
+            newEmployee.Phone = reader.GetSafeString(startingIndex++);
+            newEmployee.SalaryTypeId = reader.GetSafeInt32(startingIndex++);
+            newEmployee.Position = reader.GetSafeString(startingIndex++);
+            newEmployee.DepartmentId = reader.GetSafeInt32(startingIndex++);
+            newEmployee.Supervisor = reader.GetSafeString(startingIndex++);
+            newEmployee.StartDate = reader.GetSafeDateTime(startingIndex++);
+            newEmployee.EndDate = reader.GetSafeDateTime(startingIndex++);
+            newEmployee.IsActive = reader.GetSafeBool(startingIndex++);
+            newEmployee.DateCreated = reader.GetSafeDateTime(startingIndex++);
+            newEmployee.DateModified = reader.GetSafeDateTime(startingIndex++);
+            newEmployee.Email = reader.GetSafeString(startingIndex++);
+            newEmployee.FirstName = reader.GetSafeString(startingIndex++);
+            newEmployee.LastName = reader.GetSafeString(startingIndex++);
+            newEmployee.Mi = reader.GetSafeString(startingIndex++);
+            newEmployee.AvatarUrl = reader.GetSafeString(startingIndex++);
+            newEmployee.Oranization = reader.GetSafeString(startingIndex++);
+
+            newEmployee.Location = new Location();
+            newEmployee.Location.LineOne = reader.GetSafeString(startingIndex++);
+            newEmployee.Location.LineTwo = reader.GetSafeString(startingIndex++);
+            newEmployee.Location.City = reader.GetSafeString(startingIndex++);
+            newEmployee.Location.State = reader.GetSafeString(startingIndex++);
+            newEmployee.Location.Zip = reader.GetSafeString(startingIndex++);
+
+            newEmployee.SalaryType = reader.GetSafeString(startingIndex++);
+            newEmployee.Department = reader.GetSafeString(startingIndex++);
+
+
+
+            return newEmployee;
+
+        }
+
+        
+
+
+
+
+
+
+
+    }
+}
